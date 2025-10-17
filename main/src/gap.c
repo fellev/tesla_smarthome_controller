@@ -18,6 +18,8 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg);
 static uint8_t own_addr_type;
 static uint8_t addr_val[6] = {0};
 static uint8_t esp_uri[] = {BLE_GAP_URI_PREFIX_HTTPS, '/', '/', 'e', 's', 'p', 'r', 'e', 's', 's', 'i', 'f', '.', 'c', 'o', 'm'};
+uint8_t isConnected = 0;
+static uint16_t conn_handle_global = BLE_HS_CONN_HANDLE_NONE;
 
 /* Private functions */
 inline static void format_addr(char *addr_str, uint8_t addr[]) {
@@ -135,6 +137,8 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
     int rc = 0;
     struct ble_gap_conn_desc desc;
 
+    ESP_LOGI(TAG, "GAP event: %d", event->type);
+
     /* Handle different GAP event */
     switch (event->type) {
 
@@ -173,9 +177,12 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
                     rc);
                 return rc;
             }
+            isConnected = 1;
+
         }
         /* Connection failed, restart advertising */
         else {
+            isConnected = 0;
             start_advertising();
         }
         return rc;
@@ -186,6 +193,8 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         ESP_LOGI(TAG, "disconnected from peer; reason=%d",
                  event->disconnect.reason);
 
+        conn_handle_global = BLE_HS_CONN_HANDLE_NONE;
+        isConnected = 0;
         /* Restart advertising */
         start_advertising();
         return rc;
@@ -195,7 +204,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         /* The central has updated the connection parameters. */
         ESP_LOGI(TAG, "connection updated; status=%d",
                  event->conn_update.status);
-
+        conn_handle_global = event->connect.conn_handle;
         /* Print connection descriptor */
         rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
         if (rc != 0) {
