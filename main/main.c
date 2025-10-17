@@ -9,6 +9,8 @@
 #include "gatt_svc.h"
 #include "heart_rate.h"
 #include "led.h"
+#include "bt_event.h"
+#include "bt_gpio.h"
 
 /* Library function declarations */
 void ble_store_config_init(void);
@@ -101,6 +103,12 @@ void app_main(void) {
         return;
     }
 
+    bt_event_task_start();
+    ESP_LOGI(TAG, "Bluetooth event task started");
+
+    init_buttons();
+    ESP_LOGI(TAG, "Button GPIO initialized");
+
     /* NimBLE stack initialization */
     ret = nimble_port_init();
     if (ret != ESP_OK) {
@@ -128,6 +136,6 @@ void app_main(void) {
 
     /* Start NimBLE host task thread and return */
     xTaskCreate(nimble_host_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
-    xTaskCreate(heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
+    // xTaskCreate(heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
     return;
 }

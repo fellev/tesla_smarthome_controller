@@ -15,6 +15,7 @@
 #include "freertos/timers.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "bt_event.h"
 
 
 
@@ -109,9 +110,9 @@ static void button_event_handler(gpio_num_t gpio, bool long_press) {
 
     // Do something like send Bluetooth command
     if (long_press) {
-        // bt_event_send(BUTTON_EVENT_LONG, gpio);
+        bt_event_send(BUTTON_EVENT_LONG, gpio);
     } else {
-        // bt_event_send(BUTTON_EVENT_SHORT, gpio);
+        bt_event_send(BUTTON_EVENT_SHORT, gpio);
     }
 }
 
