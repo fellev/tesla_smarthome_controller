@@ -28,3 +28,4 @@ CMakeUserPresets.json
 .ninja_log
 
 build/*
+managed_components/*
