@@ -8,9 +8,10 @@
 #include "common.h"
 #include "heart_rate.h"
 #include "led.h"
+#include "bt_event.h"
 
 /* Private function declarations */
-static int heart_rate_chr_access(uint16_t conn_handle, uint16_t attr_handle,
+static int button_press_chr_access(uint16_t conn_handle, uint16_t attr_handle,
                                  struct ble_gatt_access_ctxt *ctxt, void *arg);
 static int led_chr_access(uint16_t conn_handle, uint16_t attr_handle,
                           struct ble_gatt_access_ctxt *ctxt, void *arg);
@@ -22,8 +23,9 @@ static int led_chr_access(uint16_t conn_handle, uint16_t attr_handle,
 static const ble_uuid128_t service_uuid = BLE_UUID128_INIT(0xFB,0x34,0x9B,0x5F,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x00,0xFF,0x00,0x00);
 
 
-static uint8_t heart_rate_chr_val[2] = {0};
-uint16_t custom_chr_val_handle;
+// static uint8_t heart_rate_chr_val[2] = {0};
+static char* button_event_msg;
+uint16_t button_chr_val_handle;
 
 static const ble_uuid128_t char_uuid    = BLE_UUID128_INIT(0xfb, 0x34, 0x9b, 0x5f,
         0x80, 0x00,
@@ -32,9 +34,9 @@ static const ble_uuid128_t char_uuid    = BLE_UUID128_INIT(0xfb, 0x34, 0x9b, 0x5
         0x00, 0x00,
         0x02, 0x29, 0x00, 0x00);
 
-static uint16_t heart_rate_chr_conn_handle = 0;
-static bool heart_rate_chr_conn_handle_inited = false;
-static bool heart_rate_ind_status = false;
+static uint16_t button_chr_conn_handle = 0;
+static bool button_chr_conn_handle_inited = false;
+static bool button_press_ind_status = false;
 
 /* Automation IO service */
 static uint16_t led_chr_val_handle;
@@ -48,9 +50,9 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
          (struct ble_gatt_chr_def[]){
              {/* Heart rate characteristic */
               .uuid = &char_uuid.u,
-              .access_cb = heart_rate_chr_access,
+              .access_cb = button_press_chr_access,
               .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY | BLE_GATT_CHR_F_INDICATE,
-              .val_handle = &custom_chr_val_handle},
+              .val_handle = &button_chr_val_handle},
              {
                  0, /* No more characteristics in this service. */
              }}},
@@ -61,7 +63,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 };
 
 /* Private functions */
-static int heart_rate_chr_access(uint16_t conn_handle, uint16_t attr_handle,
+static int button_press_chr_access(uint16_t conn_handle, uint16_t attr_handle,
                                  struct ble_gatt_access_ctxt *ctxt, void *arg) {
     /* Local variables */
     int rc;
@@ -82,11 +84,11 @@ static int heart_rate_chr_access(uint16_t conn_handle, uint16_t attr_handle,
         }
 
         /* Verify attribute handle */
-        if (attr_handle == custom_chr_val_handle) {
+        if (attr_handle == button_chr_val_handle) {
             /* Update access buffer value */
-            heart_rate_chr_val[1] = get_heart_rate();
-            rc = os_mbuf_append(ctxt->om, &heart_rate_chr_val,
-                                sizeof(heart_rate_chr_val));
+            button_event_msg = get_button_event_msg();
+            rc = os_mbuf_append(ctxt->om, &button_event_msg[0],
+                                strlen(button_event_msg));
             return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
         }
         goto error;
@@ -115,7 +117,7 @@ static int heart_rate_chr_access(uint16_t conn_handle, uint16_t attr_handle,
 error:
     ESP_LOGE(
         TAG,
-        "unexpected access operation to heart rate characteristic, opcode: %d",
+        "unexpected access operation to button press characteristic, opcode: %d",
         ctxt->op);
     return BLE_ATT_ERR_UNLIKELY;
 }
@@ -156,11 +158,11 @@ error:
 }
 
 /* Public functions */
-void send_heart_rate_indication(void) {
-    if (heart_rate_ind_status && heart_rate_chr_conn_handle_inited) {
-        ble_gatts_indicate(heart_rate_chr_conn_handle,
-                           custom_chr_val_handle);
-        ESP_LOGI(TAG, "heart rate indication sent!");
+void send_button_pressed_indication(void) {
+    if (button_press_ind_status && button_chr_conn_handle_inited) {
+        ble_gatts_indicate(button_chr_conn_handle,
+                           button_chr_val_handle);
+        ESP_LOGI(TAG, "button pressed indication sent!");
     }
 }
 
@@ -223,11 +225,11 @@ void gatt_svr_subscribe_cb(struct ble_gap_event *event) {
     }
 
     /* Check attribute handle */
-    if (event->subscribe.attr_handle == custom_chr_val_handle) {
+    if (event->subscribe.attr_handle == button_chr_val_handle) {
         /* Update heart rate subscription status */
-        heart_rate_chr_conn_handle = event->subscribe.conn_handle;
-        heart_rate_chr_conn_handle_inited = true;
-        heart_rate_ind_status = event->subscribe.cur_indicate;
+        button_chr_conn_handle = event->subscribe.conn_handle;
+        button_chr_conn_handle_inited = true;
+        button_press_ind_status = event->subscribe.cur_indicate;
     }
 }
 

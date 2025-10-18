@@ -4,19 +4,34 @@
 #include "esp_log.h"
 #include "bt_event.h"
 #include "bt_gpio.h"
+#include "gatt_svc.h"
 // #include "ble_server.h"
 
-// From your BLE code
-extern void app_notify_button_event(const char* type, int button_number);
+static char button_event_msg[32];
+
+char * get_button_event_msg(void) {
+    return button_event_msg;
+}
+
+void update_button_event_msg(const char *msg) {
+    snprintf(button_event_msg, sizeof(button_event_msg), "%s", msg);
+}
 
 #define TAG "BT_EVT"
 #define EVENT_QUEUE_LEN 10
 
 static QueueHandle_t event_queue;
 
+void app_notify_button_event(const char* type, int button_number) {
+    char msg[32];    
+    snprintf(msg, sizeof(msg), "%s:%d", type, button_number);
+    ESP_LOGI(TAG, "Sending BLE event: %s", msg);
+    update_button_event_msg(msg);
+    send_button_pressed_indication();
+}
+
 static void bt_event_task(void *arg) {
     button_event_t evt;
-    char msg[32];
     
     while (1) {
         if (xQueueReceive(event_queue, &evt, portMAX_DELAY)) {
@@ -27,9 +42,7 @@ static void bt_event_task(void *arg) {
                 continue;
             }
             button_index++; // Convert to 1-based index for user-friendly output
-            snprintf(msg, sizeof(msg), "%s:%d", type_str, button_index);
-            ESP_LOGI(TAG, "Sending BLE event: %s", msg);
-            // send_ble_message(msg);
+            app_notify_button_event(type_str, button_index);
         }
     }
 }
@@ -51,3 +64,4 @@ bool bt_event_send(button_event_type_t type, int button_number) {
     };
     return xQueueSend(event_queue, &evt, 0) == pdTRUE;
 }
+

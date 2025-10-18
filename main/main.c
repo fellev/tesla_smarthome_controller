@@ -7,7 +7,6 @@
 #include "common.h"
 #include "gap.h"
 #include "gatt_svc.h"
-#include "heart_rate.h"
 #include "led.h"
 #include "bt_event.h"
 #include "bt_gpio.h"
@@ -55,26 +54,9 @@ static void nimble_host_task(void *param) {
     /* This function won't return until nimble_port_stop() is executed */
     nimble_port_run();
 
-    /* Clean up at exit */
-    vTaskDelete(NULL);
-}
+    uint16_t conn_handle_global = 0;
 
-static void heart_rate_task(void *param) {
-    /* Task entry log */
-    ESP_LOGI(TAG, "heart rate task has been started!");
-
-    /* Loop forever */
-    while (1) {
-        /* Update heart rate value every 1 second */
-        update_heart_rate();
-        ESP_LOGI(TAG, "heart rate updated to %d", get_heart_rate());
-
-        /* Send heart rate indication if enabled */
-        send_heart_rate_indication();
-
-        /* Sleep */
-        vTaskDelay(HEART_RATE_TASK_PERIOD);
-    }
+    ble_gatts_chr_updated(conn_handle_global);
 
     /* Clean up at exit */
     vTaskDelete(NULL);
@@ -136,6 +118,5 @@ void app_main(void) {
 
     /* Start NimBLE host task thread and return */
     xTaskCreate(nimble_host_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
-    // xTaskCreate(heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
     return;
 }

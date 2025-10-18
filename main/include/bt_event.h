@@ -17,6 +17,7 @@ typedef struct {
 
 void bt_event_task_start(void);
 bool bt_event_send(button_event_type_t type, int button_number);
+char * get_button_event_msg(void);
 
 #ifdef __cplusplus
 }
