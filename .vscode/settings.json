@@ -21,5 +21,6 @@
     "gatt_svc.h": "c",
     "freertos.h": "c",
     "led.h": "c"
-  }
+  },
+  "idf.currentSetup": "/home/felix/esp/esp-idf"
 }
